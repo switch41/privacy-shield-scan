@@ -1,4 +1,4 @@
-import type { PolicyAnalysis } from "@/lib/mockData";
+import type { PolicyAnalysis } from "@/lib/types";
 import { FileText, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 
 const typeIcon = {

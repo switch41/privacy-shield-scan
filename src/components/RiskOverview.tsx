@@ -1,4 +1,4 @@
-import type { ScanResult } from "@/lib/mockData";
+import type { ScanResult } from "@/lib/types";
 import { RiskBadge } from "./RiskBadge";
 import { Shield, AlertTriangle, CheckCircle2, Eye } from "lucide-react";
 
