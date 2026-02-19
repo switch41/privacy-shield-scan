@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { TrackerCategory } from "@/lib/mockData";
+import type { TrackerCategory } from "@/lib/types";
 import { Shield, BarChart3, Megaphone, AlertTriangle } from "lucide-react";
 
 const categoryConfig: Record<TrackerCategory, { style: string; icon: typeof Shield }> = {

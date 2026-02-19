@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { RiskLevel } from "@/lib/mockData";
+import type { RiskLevel } from "@/lib/types";
 
 const riskStyles: Record<RiskLevel, string> = {
   Low: "bg-success/15 text-success border-success/30",

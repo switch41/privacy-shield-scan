@@ -1,4 +1,4 @@
-import type { TrackerInfo } from "@/lib/mockData";
+import type { TrackerInfo } from "@/lib/types";
 import { RiskBadge } from "./RiskBadge";
 import { CategoryBadge } from "./CategoryBadge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";

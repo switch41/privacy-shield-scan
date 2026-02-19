@@ -6,27 +6,55 @@ import { TrackerDetail } from "@/components/TrackerDetail";
 import { PolicyAnalysisCard } from "@/components/PolicyAnalysisCard";
 import { CategoryChart } from "@/components/CategoryChart";
 import { CSVExport } from "@/components/CSVExport";
-import { generateMockScanResult, type ScanResult, type TrackerInfo } from "@/lib/mockData";
+import type { ScanResult, TrackerInfo } from "@/lib/types";
 import { Shield } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [selectedTracker, setSelectedTracker] = useState<TrackerInfo | null>(null);
+  const { toast } = useToast();
 
-  const handleScan = useCallback((url: string) => {
+  const handleScan = useCallback(async (url: string) => {
     setIsScanning(true);
     setResult(null);
-    // Simulate scan delay
-    setTimeout(() => {
-      setResult(generateMockScanResult(url));
+
+    try {
+      const { data, error } = await supabase.functions.invoke('scan-website', {
+        body: { url },
+      });
+
+      if (error) throw error;
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Scan failed');
+      }
+
+      setResult({
+        url: data.url,
+        timestamp: data.timestamp,
+        overallRisk: data.overallRisk,
+        riskExplanation: data.riskExplanation,
+        suggestedAction: data.suggestedAction,
+        trackers: data.trackers || [],
+        policyAnalysis: data.policyAnalysis,
+      });
+    } catch (err) {
+      console.error('Scan error:', err);
+      toast({
+        title: "Scan Failed",
+        description: err instanceof Error ? err.message : "Could not scan the website. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsScanning(false);
-    }, 2500);
-  }, []);
+    }
+  }, [toast]);
 
   return (
     <div className="min-h-screen bg-background grid-bg">
-      {/* Header */}
       <header className="border-b border-border bg-card/60 backdrop-blur-md sticky top-0 z-50">
         <div className="container max-w-6xl flex items-center gap-2 py-3">
           <Shield className="h-5 w-5 text-primary" />
@@ -36,12 +64,10 @@ const Index = () => {
       </header>
 
       <main className="container max-w-6xl py-12 space-y-8">
-        {/* Scanner */}
         <section className="py-8">
           <ScanForm onScan={handleScan} isScanning={isScanning} />
         </section>
 
-        {/* Results */}
         {result && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">

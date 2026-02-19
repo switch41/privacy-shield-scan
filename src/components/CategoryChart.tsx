@@ -1,4 +1,4 @@
-import type { TrackerInfo } from "@/lib/mockData";
+import type { TrackerInfo } from "@/lib/types";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 const COLORS = {

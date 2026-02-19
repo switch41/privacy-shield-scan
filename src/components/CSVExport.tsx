@@ -1,4 +1,4 @@
-import type { ScanResult } from "@/lib/mockData";
+import type { ScanResult } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 
