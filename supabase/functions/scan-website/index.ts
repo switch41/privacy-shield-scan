@@ -271,21 +271,10 @@ function classifyResources(resources: Array<{ domain: string; type: string; url:
   }).filter(Boolean);
 }
 
-// Privacy policy analysis
+// Privacy policy analysis (AI-powered)
 const PRIVACY_POLICY_PATHS = ['/privacy', '/privacy-policy', '/privacy.html', '/privacypolicy', '/legal/privacy'];
 
-const POSITIVE_KEYWORDS = ['data subject rights', 'right to access', 'right to erasure', 'right to delete',
-  'data portability', 'opt-out', 'opt out', 'withdraw consent', 'cookie consent',
-  'granular consent', 'cookie banner', 'cookie preferences', 'data retention period',
-  'legitimate interest', 'data protection officer', 'gdpr', 'ccpa', 'right to object'];
-
-const NEGATIVE_KEYWORDS_ABSENT = ['granular consent', 'cookie banner', 'opt-out mechanism',
-  'data retention period', 'legitimate interest', 'right to erasure'];
-
-async function analyzePrivacyPolicy(baseUrl: string) {
-  let policyText = '';
-  let policyUrl = '';
-
+async function fetchPrivacyPolicyText(baseUrl: string): Promise<{ text: string; url: string } | null> {
   for (const path of PRIVACY_POLICY_PATHS) {
     try {
       const url = new URL(path, baseUrl).toString();
@@ -295,68 +284,151 @@ async function analyzePrivacyPolicy(baseUrl: string) {
       });
       if (response.ok) {
         const html = await response.text();
-        // Strip HTML tags to get text
-        policyText = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        const text = html
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
           .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
           .replace(/<[^>]+>/g, ' ')
           .replace(/\s+/g, ' ')
           .trim()
-          .slice(0, 15000); // Limit size
-        policyUrl = url;
-        break;
+          .slice(0, 12000);
+        if (text.length > 200) return { text, url };
       }
     } catch { /* try next path */ }
   }
+  return null;
+}
 
-  if (!policyText) {
+async function analyzePrivacyPolicy(baseUrl: string, trackerSummary: string) {
+  const policyData = await fetchPrivacyPolicyText(baseUrl);
+
+  if (!policyData) {
     return {
       score: 'Review Recommended',
       policyUrl: null,
       highlights: [
-        { text: 'Could not locate a privacy policy page. Checked common paths.', type: 'negative' },
+        { text: 'Could not locate a privacy policy page. Checked common paths like /privacy, /privacy-policy.', type: 'negative' },
       ],
       foundKeywords: [],
-      missingKeywords: NEGATIVE_KEYWORDS_ABSENT,
+      missingKeywords: ['privacy policy page'],
     };
   }
 
-  const textLower = policyText.toLowerCase();
-  const foundKeywords = POSITIVE_KEYWORDS.filter(kw => textLower.includes(kw));
-  const missingKeywords = NEGATIVE_KEYWORDS_ABSENT.filter(kw => !textLower.includes(kw));
-
-  const highlights = [];
-
-  if (foundKeywords.length >= 6) {
-    highlights.push({ text: 'Privacy policy covers many important consent and data rights topics.', type: 'positive' });
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) {
+    console.warn('LOVABLE_API_KEY not set, falling back to basic analysis');
+    return fallbackKeywordAnalysis(policyData.text, policyData.url);
   }
-  if (textLower.includes('data subject rights') || textLower.includes('right to access')) {
-    highlights.push({ text: 'Policy includes data subject rights section (access, deletion, portability).', type: 'positive' });
-  }
-  if (textLower.includes('third-party') || textLower.includes('third party')) {
-    if (!textLower.includes('retention') && !textLower.includes('how long')) {
-      highlights.push({ text: 'Mentions third-party providers but does not specify data retention periods.', type: 'warning' });
+
+  try {
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-3-flash-preview',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a privacy compliance analyst. Analyze the provided privacy policy text and return a structured assessment. Be concise and actionable. Focus on GDPR, CCPA, and ePrivacy Directive compliance.`
+          },
+          {
+            role: 'user',
+            content: `Analyze this privacy policy for compliance. The website has these trackers: ${trackerSummary}
+
+Privacy policy text (truncated):
+${policyData.text.slice(0, 8000)}
+
+Respond using the analyze_policy tool.`
+          }
+        ],
+        tools: [{
+          type: 'function',
+          function: {
+            name: 'analyze_policy',
+            description: 'Return structured privacy policy analysis',
+            parameters: {
+              type: 'object',
+              properties: {
+                score: {
+                  type: 'string',
+                  enum: ['Likely Compliant', 'Review Recommended', 'Potentially Non-Compliant'],
+                  description: 'Overall compliance assessment'
+                },
+                highlights: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      text: { type: 'string', description: 'Finding description, max 120 chars' },
+                      type: { type: 'string', enum: ['positive', 'negative', 'warning'] }
+                    },
+                    required: ['text', 'type'],
+                    additionalProperties: false
+                  },
+                  description: '4-8 key findings about the policy'
+                },
+                foundKeywords: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Compliance concepts found (e.g. "right to erasure", "data portability", "cookie consent")'
+                },
+                missingKeywords: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Important compliance concepts missing from the policy'
+                }
+              },
+              required: ['score', 'highlights', 'foundKeywords', 'missingKeywords'],
+              additionalProperties: false
+            }
+          }
+        }],
+        tool_choice: { type: 'function', function: { name: 'analyze_policy' } },
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errText = await aiResponse.text();
+      console.error('AI gateway error:', aiResponse.status, errText);
+      return fallbackKeywordAnalysis(policyData.text, policyData.url);
     }
-  }
-  if (!textLower.includes('cookie banner') && !textLower.includes('cookie consent')) {
-    highlights.push({ text: 'No explicit mention of cookie consent banner or prior consent requirement.', type: 'negative' });
-  }
-  if (!textLower.includes('granular') && !textLower.includes('opt-out')) {
-    highlights.push({ text: 'Lacks granular opt-out for individual tracker categories.', type: 'negative' });
-  }
-  if (textLower.includes('data processing') || textLower.includes('purposes')) {
-    highlights.push({ text: 'Data processing purposes are described.', type: 'positive' });
-  }
 
-  // Score
-  let score: string;
-  if (foundKeywords.length >= 8 && missingKeywords.length <= 2) {
-    score = 'Likely Compliant';
-  } else if (missingKeywords.length >= 4) {
-    score = 'Potentially Non-Compliant';
-  } else {
-    score = 'Review Recommended';
-  }
+    const aiData = await aiResponse.json();
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall) {
+      console.error('No tool call in AI response');
+      return fallbackKeywordAnalysis(policyData.text, policyData.url);
+    }
 
+    const parsed = JSON.parse(toolCall.function.arguments);
+    return {
+      score: parsed.score,
+      policyUrl: policyData.url,
+      highlights: parsed.highlights,
+      foundKeywords: parsed.foundKeywords,
+      missingKeywords: parsed.missingKeywords,
+    };
+  } catch (err) {
+    console.error('AI analysis failed:', err);
+    return fallbackKeywordAnalysis(policyData.text, policyData.url);
+  }
+}
+
+// Fallback if AI is unavailable
+function fallbackKeywordAnalysis(policyText: string, policyUrl: string) {
+  const POSITIVE = ['data subject rights', 'right to access', 'right to erasure', 'opt-out', 'cookie consent', 'data retention', 'gdpr', 'ccpa'];
+  const MISSING_CHECK = ['granular consent', 'cookie banner', 'opt-out mechanism', 'data retention period', 'right to erasure'];
+  const textLower = policyText.toLowerCase();
+  const foundKeywords = POSITIVE.filter(kw => textLower.includes(kw));
+  const missingKeywords = MISSING_CHECK.filter(kw => !textLower.includes(kw));
+  const highlights: Array<{ text: string; type: 'positive' | 'negative' | 'warning' }> = [];
+  if (foundKeywords.length >= 4) highlights.push({ text: 'Policy covers several important data rights topics.', type: 'positive' });
+  if (missingKeywords.length >= 3) highlights.push({ text: 'Multiple key compliance terms are missing from the policy.', type: 'negative' });
+  const score = foundKeywords.length >= 6 && missingKeywords.length <= 2
+    ? 'Likely Compliant' as const
+    : missingKeywords.length >= 4 ? 'Potentially Non-Compliant' as const : 'Review Recommended' as const;
   return { score, policyUrl, highlights, foundKeywords, missingKeywords };
 }
 
@@ -417,8 +489,11 @@ Deno.serve(async (req) => {
     // Combine all trackers
     const allTrackers = [...cookies, ...resourceTrackers];
 
-    // Analyze privacy policy
-    const policyAnalysis = await analyzePrivacyPolicy(formattedUrl);
+    // Build tracker summary for AI context
+    const trackerSummary = allTrackers.map(t => `${t.name} (${t.category}/${t.riskLevel})`).join(', ') || 'None detected';
+
+    // Analyze privacy policy with AI
+    const policyAnalysis = await analyzePrivacyPolicy(formattedUrl, trackerSummary);
 
     // Compute overall risk
     const suspiciousCount = allTrackers.filter(t => t.category === 'Suspicious').length;
