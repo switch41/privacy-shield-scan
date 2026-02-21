@@ -23,7 +23,7 @@ const Index = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('scan-website', {
-        body: { url },
+        body: { url }
       });
 
       if (error) throw error;
@@ -39,14 +39,14 @@ const Index = () => {
         riskExplanation: data.riskExplanation,
         suggestedAction: data.suggestedAction,
         trackers: data.trackers || [],
-        policyAnalysis: data.policyAnalysis,
+        policyAnalysis: data.policyAnalysis
       });
     } catch (err) {
       console.error('Scan error:', err);
       toast({
         title: "Scan Failed",
         description: err instanceof Error ? err.message : "Could not scan the website. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsScanning(false);
@@ -59,7 +59,7 @@ const Index = () => {
         <div className="container max-w-6xl flex items-center gap-2 py-3">
           <Shield className="h-5 w-5 text-primary" />
           <span className="font-semibold text-sm text-foreground">SmartConsent</span>
-          <span className="text-xs text-muted-foreground font-mono ml-auto">v0.1 MVP</span>
+          <span className="text-xs text-muted-foreground font-mono ml-auto">v2.1 MVP</span>
         </div>
       </header>
 
@@ -68,8 +68,8 @@ const Index = () => {
           <ScanForm onScan={handleScan} isScanning={isScanning} />
         </section>
 
-        {result && (
-          <div className="space-y-6">
+        {result &&
+        <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Scan Results</h2>
@@ -91,24 +91,24 @@ const Index = () => {
 
             <PolicyAnalysisCard analysis={result.policyAnalysis} />
           </div>
-        )}
+        }
 
-        {!result && !isScanning && (
-          <div className="text-center py-16 animate-fade-in-up">
+        {!result && !isScanning &&
+        <div className="text-center py-16 animate-fade-in-up">
             <p className="text-muted-foreground text-sm">
               Enter a URL above to scan for cookies, trackers, and privacy compliance.
             </p>
           </div>
-        )}
+        }
       </main>
 
       <TrackerDetail
         tracker={selectedTracker}
         open={!!selectedTracker}
-        onClose={() => setSelectedTracker(null)}
-      />
-    </div>
-  );
+        onClose={() => setSelectedTracker(null)} />
+
+    </div>);
+
 };
 
 export default Index;
