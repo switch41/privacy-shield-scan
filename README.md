@@ -1,3 +1,25 @@
+
+v2.1 ( smart consent manager ) last developed 21/02/26
+features :
+##Core Features
+Website Scanner — Enter a URL, and the backend crawls it to detect cookies and third-party trackers (Google Analytics, Facebook, Criteo, etc.)
+Tracker Classification — Each tracker is categorized (Analytics, Marketing, Suspicious, Essential) with a risk level (Low → Critical) based on cookie attributes (expiry, Secure flag, SameSite, first/third-party)
+AI Privacy Policy Analysis — The scanner fetches the site's /privacy page and uses Lovable AI (Gemini model) to assess GDPR/CCPA compliance, returning highlights and missing keywords
+Risk Assessment — Combines tracker data + policy analysis into an overall risk score with a suggested action (Allow / Review / Deny)
+Scan History — Results are saved to the Lovable Cloud database so you can browse past scans
+Privacy Report Page — Dedicated /report/:id route showing full details: risk overview, tracker table, category chart, and policy analysis
+CSV Export — Download tracker data as a spreadsheet
+##Tech Stack
+Layer	Tool
+Frontend	React + TypeScript + Tailwind CSS + shadcn/ui
+Charts	Recharts
+Routing	React Router
+Data fetching	TanStack React Query
+Backend logic	Lovable Cloud Edge Functions (the scan-website function)
+AI integration	Lovable AI Gateway (no API key needed)
+Database	Lovable Cloud Database (stores scan history)
+Security	Row-Level Security policies on the scans table
+
 # Welcome to your Lovable project
 
 ## Project info
