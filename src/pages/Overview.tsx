@@ -1,0 +1,274 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Shield, Activity, AlertTriangle, CheckCircle2, XCircle,
+  BarChart3, Cookie, Megaphone, Globe, TrendingUp, Clock,
+} from "lucide-react";
+import { NavLink } from "@/components/NavLink";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import type { RiskLevel, TrackerInfo } from "@/lib/types";
+
+interface ScanRow {
+  id: string;
+  url: string;
+  overall_risk: string;
+  tracker_count: number;
+  trackers: any;
+  created_at: string;
+}
+
+const riskColor: Record<string, string> = {
+  Low: "text-accent",
+  Medium: "text-warning",
+  High: "text-destructive",
+  Critical: "text-critical",
+};
+
+const Overview = () => {
+  const [scans, setScans] = useState<ScanRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [consents, setConsents] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    supabase
+      .from("scans")
+      .select("id, url, overall_risk, tracker_count, trackers, created_at")
+      .order("created_at", { ascending: false })
+      .limit(100)
+      .then(({ data, error }) => {
+        if (!error) setScans(data || []);
+        setLoading(false);
+      });
+
+    const stored = localStorage.getItem("consent-preferences");
+    if (stored) setConsents(JSON.parse(stored));
+  }, []);
+
+  const totalScans = scans.length;
+  const totalTrackers = scans.reduce((s, r) => s + r.tracker_count, 0);
+  const avgTrackers = totalScans ? Math.round(totalTrackers / totalScans) : 0;
+
+  const riskCounts = scans.reduce<Record<string, number>>((acc, s) => {
+    acc[s.overall_risk] = (acc[s.overall_risk] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Aggregate tracker categories across all scans
+  const categoryCounts: Record<string, number> = {};
+  scans.forEach((scan) => {
+    const trackers = (scan.trackers as TrackerInfo[]) || [];
+    trackers.forEach((t) => {
+      categoryCounts[t.category] = (categoryCounts[t.category] || 0) + 1;
+    });
+  });
+
+  const consentLabels: Record<string, { label: string; icon: React.ReactNode }> = {
+    essential: { label: "Essential", icon: <Cookie className="h-4 w-4 text-accent" /> },
+    analytics: { label: "Analytics", icon: <BarChart3 className="h-4 w-4 text-primary" /> },
+    marketing: { label: "Marketing", icon: <Megaphone className="h-4 w-4 text-warning" /> },
+    thirdparty: { label: "Third-Party", icon: <Globe className="h-4 w-4 text-destructive" /> },
+  };
+
+  const recentScans = scans.slice(0, 5);
+
+  return (
+    <div className="min-h-screen bg-background grid-bg">
+      <header className="border-b border-border bg-card/60 backdrop-blur-md sticky top-0 z-50">
+        <div className="container max-w-6xl flex items-center gap-2 py-3">
+          <Shield className="h-5 w-5 text-primary" />
+          <span className="font-semibold text-sm text-foreground">SmartConsent</span>
+          <nav className="flex items-center gap-4 ml-6">
+            <NavLink to="/overview" className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors" activeClassName="text-primary">Overview</NavLink>
+            <NavLink to="/" className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors" activeClassName="text-primary">Scanner</NavLink>
+            <NavLink to="/consents" className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors" activeClassName="text-primary">Consents</NavLink>
+            <NavLink to="/history" className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors" activeClassName="text-primary">History</NavLink>
+          </nav>
+          <span className="text-xs text-muted-foreground font-mono ml-auto">v2.1 MVP</span>
+        </div>
+      </header>
+
+      <main className="container max-w-6xl py-12 space-y-8">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">Privacy health at a glance</p>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-28 bg-card border border-border rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <>
+            {/* Stat Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="border-border bg-card">
+                <CardContent className="pt-5 pb-4 px-5">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                    <Activity className="h-4 w-4" />
+                    <span className="text-xs font-mono">Total Scans</span>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{totalScans}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border bg-card">
+                <CardContent className="pt-5 pb-4 px-5">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                    <TrendingUp className="h-4 w-4" />
+                    <span className="text-xs font-mono">Total Trackers</span>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{totalTrackers}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border bg-card">
+                <CardContent className="pt-5 pb-4 px-5">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                    <BarChart3 className="h-4 w-4" />
+                    <span className="text-xs font-mono">Avg / Scan</span>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{avgTrackers}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border bg-card">
+                <CardContent className="pt-5 pb-4 px-5">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="text-xs font-mono">High/Critical</span>
+                  </div>
+                  <p className="text-2xl font-bold text-destructive">
+                    {(riskCounts["High"] || 0) + (riskCounts["Critical"] || 0)}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Risk Distribution */}
+              <Card className="border-border bg-card">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-foreground">Risk Distribution</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {(["Low", "Medium", "High", "Critical"] as RiskLevel[]).map((level) => {
+                    const count = riskCounts[level] || 0;
+                    const pct = totalScans ? Math.round((count / totalScans) * 100) : 0;
+                    return (
+                      <div key={level} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className={`font-medium ${riskColor[level]}`}>{level}</span>
+                          <span className="font-mono text-muted-foreground">{count} ({pct}%)</span>
+                        </div>
+                        <Progress value={pct} className="h-2" />
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+
+              {/* Tracker Categories */}
+              <Card className="border-border bg-card">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-foreground">Tracker Categories</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {["Essential", "Analytics", "Marketing", "Suspicious"].map((cat) => {
+                    const count = categoryCounts[cat] || 0;
+                    const pct = totalTrackers ? Math.round((count / totalTrackers) * 100) : 0;
+                    return (
+                      <div key={cat} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium text-foreground">{cat}</span>
+                          <span className="font-mono text-muted-foreground">{count} ({pct}%)</span>
+                        </div>
+                        <Progress value={pct} className="h-2" />
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+
+              {/* Consent Preferences */}
+              <Card className="border-border bg-card">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-foreground">Consent Preferences</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {Object.keys(consentLabels).length > 0 && Object.keys(consents).length > 0 ? (
+                    <div className="space-y-3">
+                      {Object.entries(consentLabels).map(([key, { label, icon }]) => (
+                        <div key={key} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {icon}
+                            <span className="text-sm text-foreground">{label}</span>
+                          </div>
+                          <Badge variant={consents[key] ? "default" : "outline"} className="text-[10px]">
+                            {consents[key] ? "Allowed" : "Blocked"}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-xs text-muted-foreground mb-3">No preferences set yet</p>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to="/consents">Configure Consents</Link>
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Recent Scans */}
+              <Card className="border-border bg-card">
+                <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-foreground">Recent Scans</CardTitle>
+                  <Button variant="ghost" size="sm" asChild className="text-xs text-muted-foreground">
+                    <Link to="/history">View all →</Link>
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {recentScans.length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-xs text-muted-foreground mb-3">No scans yet</p>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to="/">Start Scanning</Link>
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {recentScans.map((scan) => (
+                        <Link
+                          key={scan.id}
+                          to={`/report/${scan.id}`}
+                          className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-secondary/50 transition-colors"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-foreground truncate">{scan.url}</p>
+                            <p className="text-[10px] font-mono text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <Clock className="h-3 w-3" />
+                              {new Date(scan.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <span className={`text-xs font-mono font-medium ${riskColor[scan.overall_risk] || "text-muted-foreground"}`}>
+                            {scan.overall_risk}
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default Overview;
