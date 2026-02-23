@@ -79,6 +79,7 @@ const Index = () => {
           <span className="font-semibold text-sm text-foreground">SmartConsent</span>
           <nav className="flex items-center gap-4 ml-6">
             <NavLink to="/" className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors" activeClassName="text-primary">Scanner</NavLink>
+            <NavLink to="/consents" className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors" activeClassName="text-primary">Consents</NavLink>
             <NavLink to="/history" className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors" activeClassName="text-primary">History</NavLink>
           </nav>
           <span className="text-xs text-muted-foreground font-mono ml-auto">v2.1 MVP</span>
