@@ -58,7 +58,8 @@ const Index = () => {
         trackers: scanResult.trackers as any,
         policy_analysis: scanResult.policyAnalysis as any,
         tracker_count: scanResult.trackers.length,
-      });
+        privacy_grade: scanResult.privacyGrade as any,
+      } as any);
 
       if (dbError) console.error('Failed to save scan:', dbError);
     } catch (err) {
