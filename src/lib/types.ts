@@ -23,6 +23,20 @@ export interface PolicyAnalysis {
   foundKeywords: string[];
 }
 
+export interface PrivacyGradeBreakdown {
+  trackerPenalty: number;
+  policyPenalty: number;
+  httpsPenalty: number;
+  fingerprintPenalty: number;
+  prevalencePenalty: number;
+}
+
+export interface PrivacyGrade {
+  grade: string;
+  score: number;
+  breakdown: PrivacyGradeBreakdown;
+}
+
 export interface ScanResult {
   url: string;
   timestamp: string;
@@ -31,4 +45,5 @@ export interface ScanResult {
   suggestedAction: "Allow" | "Deny" | "Review Manually";
   trackers: TrackerInfo[];
   policyAnalysis: PolicyAnalysis;
+  privacyGrade?: PrivacyGrade;
 }

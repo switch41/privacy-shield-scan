@@ -9,6 +9,7 @@ import { TrackerDetail } from "@/components/TrackerDetail";
 import { PolicyAnalysisCard } from "@/components/PolicyAnalysisCard";
 import { CategoryChart } from "@/components/CategoryChart";
 import { CSVExport } from "@/components/CSVExport";
+import { PrivacyGradeCard } from "@/components/PrivacyGradeCard";
 import type { ScanResult, TrackerInfo } from "@/lib/types";
 
 const Report = () => {
@@ -36,6 +37,7 @@ const Report = () => {
             suggestedAction: data.suggested_action as any,
             trackers: (data.trackers as any) || [],
             policyAnalysis: data.policy_analysis as any,
+            privacyGrade: (data as any).privacy_grade || undefined,
           });
         }
         setLoading(false);
@@ -86,6 +88,9 @@ const Report = () => {
 
             <RiskOverview result={result} />
 
+            {result.privacyGrade && (
+              <PrivacyGradeCard grade={result.privacyGrade} />
+            )}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
                 <TrackerTable trackers={result.trackers} onSelect={setSelectedTracker} />
