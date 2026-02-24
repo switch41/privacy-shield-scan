@@ -6,6 +6,7 @@ import { TrackerTable } from "@/components/TrackerTable";
 import { TrackerDetail } from "@/components/TrackerDetail";
 import { PolicyAnalysisCard } from "@/components/PolicyAnalysisCard";
 import { CategoryChart } from "@/components/CategoryChart";
+import { PrivacyGradeCard } from "@/components/PrivacyGradeCard";
 import { CSVExport } from "@/components/CSVExport";
 import type { ScanResult, TrackerInfo } from "@/lib/types";
 import { Shield, History } from "lucide-react";
@@ -42,7 +43,8 @@ const Index = () => {
         riskExplanation: data.riskExplanation,
         suggestedAction: data.suggestedAction,
         trackers: data.trackers || [],
-        policyAnalysis: data.policyAnalysis
+        policyAnalysis: data.policyAnalysis,
+        privacyGrade: data.privacyGrade,
       };
 
       setResult(scanResult);
@@ -104,6 +106,9 @@ const Index = () => {
 
             <RiskOverview result={result} />
 
+            {result.privacyGrade && (
+              <PrivacyGradeCard grade={result.privacyGrade} />
+            )}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
                 <TrackerTable trackers={result.trackers} onSelect={setSelectedTracker} />
