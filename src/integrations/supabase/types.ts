@@ -20,6 +20,7 @@ export type Database = {
           id: string
           overall_risk: string
           policy_analysis: Json
+          privacy_grade: Json | null
           risk_explanation: string
           suggested_action: string
           tracker_count: number
@@ -31,6 +32,7 @@ export type Database = {
           id?: string
           overall_risk: string
           policy_analysis?: Json
+          privacy_grade?: Json | null
           risk_explanation: string
           suggested_action: string
           tracker_count?: number
@@ -42,6 +44,7 @@ export type Database = {
           id?: string
           overall_risk?: string
           policy_analysis?: Json
+          privacy_grade?: Json | null
           risk_explanation?: string
           suggested_action?: string
           tracker_count?: number
