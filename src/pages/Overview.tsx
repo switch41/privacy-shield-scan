@@ -18,6 +18,7 @@ interface ScanRow {
   overall_risk: string;
   tracker_count: number;
   trackers: any;
+  privacy_grade: any;
   created_at: string;
 }
 
@@ -36,7 +37,7 @@ const Overview = () => {
   useEffect(() => {
     supabase
       .from("scans")
-      .select("id, url, overall_risk, tracker_count, trackers, created_at")
+      .select("id, url, overall_risk, tracker_count, trackers, privacy_grade, created_at")
       .order("created_at", { ascending: false })
       .limit(100)
       .then(({ data, error }) => {
@@ -71,6 +72,32 @@ const Overview = () => {
     analytics: { label: "Analytics", icon: <BarChart3 className="h-4 w-4 text-primary" /> },
     marketing: { label: "Marketing", icon: <Megaphone className="h-4 w-4 text-warning" /> },
     thirdparty: { label: "Third-Party", icon: <Globe className="h-4 w-4 text-destructive" /> },
+  };
+
+  // Compute average privacy grade
+  const gradeValues: Record<string, number> = {
+    "A+": 95, A: 90, "B+": 85, B: 80, "C+": 75, C: 70, "D+": 65, D: 60, F: 40,
+  };
+  const gradeFromScore = (s: number): string => {
+    if (s >= 93) return "A+";
+    if (s >= 86) return "A";
+    if (s >= 80) return "B+";
+    if (s >= 73) return "B";
+    if (s >= 66) return "C+";
+    if (s >= 60) return "C";
+    if (s >= 53) return "D+";
+    if (s >= 46) return "D";
+    return "F";
+  };
+  const scansWithGrade = scans.filter((s) => s.privacy_grade?.score != null);
+  const avgGradeScore = scansWithGrade.length
+    ? Math.round(scansWithGrade.reduce((sum, s) => sum + (s.privacy_grade.score as number), 0) / scansWithGrade.length)
+    : null;
+  const avgGradeLetter = avgGradeScore != null ? gradeFromScore(avgGradeScore) : null;
+
+  const gradeColorClass: Record<string, string> = {
+    "A+": "text-accent", A: "text-accent", "B+": "text-primary", B: "text-primary",
+    "C+": "text-warning", C: "text-warning", "D+": "text-destructive", D: "text-destructive", F: "text-critical",
   };
 
   const recentScans = scans.slice(0, 5);
@@ -143,6 +170,26 @@ const Overview = () => {
                   <p className="text-2xl font-bold text-destructive">
                     {(riskCounts["High"] || 0) + (riskCounts["Critical"] || 0)}
                   </p>
+                </CardContent>
+              </Card>
+              <Card className="border-border bg-card col-span-2 md:col-span-4">
+                <CardContent className="pt-5 pb-4 px-5">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                    <Shield className="h-4 w-4" />
+                    <span className="text-xs font-mono">🦆 Avg Privacy Grade</span>
+                  </div>
+                  {avgGradeLetter ? (
+                    <div className="flex items-center gap-3">
+                      <span className={`text-3xl font-black ${gradeColorClass[avgGradeLetter] || "text-muted-foreground"}`}>
+                        {avgGradeLetter}
+                      </span>
+                      <span className="text-sm text-muted-foreground font-mono">
+                        {avgGradeScore}/100 across {scansWithGrade.length} scan{scansWithGrade.length !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No graded scans yet</p>
+                  )}
                 </CardContent>
               </Card>
             </div>
