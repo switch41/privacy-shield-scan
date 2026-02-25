@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, ArrowLeft } from "lucide-react";
+import { Shield, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/NavLink";
 import { RiskOverview } from "@/components/RiskOverview";
 import { TrackerTable } from "@/components/TrackerTable";
@@ -83,7 +84,15 @@ const Report = () => {
                   {result.url} · {new Date(result.timestamp).toLocaleString()}
                 </p>
               </div>
-              <CSVExport result={result} />
+              <div className="flex items-center gap-3">
+                <CSVExport result={result} />
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={`/sandbox?url=${encodeURIComponent(result.url)}`}>
+                    <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
+                    Browse Safely
+                  </Link>
+                </Button>
+              </div>
             </div>
 
             <RiskOverview result={result} />

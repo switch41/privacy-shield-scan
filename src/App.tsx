@@ -8,6 +8,7 @@ import Overview from "./pages/Overview";
 import History from "./pages/History";
 import Report from "./pages/Report";
 import Consents from "./pages/Consents";
+import Sandbox from "./pages/Sandbox";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/consents" element={<Consents />} />
           <Route path="/history" element={<History />} />
           <Route path="/report/:id" element={<Report />} />
+          <Route path="/sandbox" element={<Sandbox />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
