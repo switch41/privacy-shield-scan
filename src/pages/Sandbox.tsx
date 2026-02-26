@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface SandboxResult {
   title: string;
@@ -29,16 +31,16 @@ const Sandbox = () => {
   const [result, setResult] = useState<SandboxResult | null>(null);
   const { toast } = useToast();
 
-  const handleBrowse = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!url.trim()) return;
+  const handleBrowse = useCallback(async (targetUrl?: string) => {
+    const browseUrl = targetUrl || url;
+    if (!browseUrl.trim()) return;
 
     setLoading(true);
     setResult(null);
 
     try {
       const { data, error } = await supabase.functions.invoke("sandbox-browse", {
-        body: { url: url.trim() },
+        body: { url: browseUrl.trim() },
       });
 
       if (error) throw new Error(error.message);
@@ -55,14 +57,15 @@ const Sandbox = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [url, toast]);
 
   // Auto-load if URL param provided
-  useState(() => {
+  useEffect(() => {
     if (initialUrl) {
-      handleBrowse();
+      handleBrowse(initialUrl);
     }
-  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen bg-background grid-bg">
@@ -92,7 +95,7 @@ const Sandbox = () => {
           </p>
         </div>
 
-        <form onSubmit={handleBrowse} className="flex gap-3">
+        <form onSubmit={(e) => { e.preventDefault(); handleBrowse(); }} className="flex gap-3">
           <Input
             type="text"
             value={url}
@@ -195,8 +198,10 @@ const Sandbox = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="prose prose-sm dark:prose-invert max-w-none text-foreground whitespace-pre-wrap font-mono text-xs leading-relaxed max-h-[70vh] overflow-y-auto">
-                      {result.markdown || "No readable content found."}
+                    <div className="prose prose-sm dark:prose-invert max-w-none max-h-[70vh] overflow-y-auto">
+                      {result.markdown ? (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.markdown}</ReactMarkdown>
+                      ) : "No readable content found."}
                     </div>
                   </CardContent>
                 </Card>
@@ -219,7 +224,7 @@ const Sandbox = () => {
                             <button
                               onClick={() => {
                                 setUrl(link);
-                                handleBrowse();
+                                handleBrowse(link);
                               }}
                               className="text-xs font-mono text-primary hover:underline truncate text-left flex-1"
                               title={`Browse safely: ${link}`}
