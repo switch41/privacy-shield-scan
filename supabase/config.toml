@@ -1,1 +1,7 @@
 project_id = "onodlneiatnyllrmuhel"
+
+[functions.scan-website]
+verify_jwt = false
+
+[functions.sandbox-browse]
+verify_jwt = false
