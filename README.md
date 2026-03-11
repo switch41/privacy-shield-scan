@@ -1,95 +1,220 @@
 
-v2.1 ( smart consent manager ) last developed 21/02/26
-features :
-##Core Features
-Website Scanner — Enter a URL, and the backend crawls it to detect cookies and third-party trackers (Google Analytics, Facebook, Criteo, etc.)
-Tracker Classification — Each tracker is categorized (Analytics, Marketing, Suspicious, Essential) with a risk level (Low → Critical) based on cookie attributes (expiry, Secure flag, SameSite, first/third-party)
-AI Privacy Policy Analysis — The scanner fetches the site's /privacy page and uses Lovable AI (Gemini model) to assess GDPR/CCPA compliance, returning highlights and missing keywords
-Risk Assessment — Combines tracker data + policy analysis into an overall risk score with a suggested action (Allow / Review / Deny)
-Scan History — Results are saved to the Lovable Cloud database so you can browse past scans
-Privacy Report Page — Dedicated /report/:id route showing full details: risk overview, tracker table, category chart, and policy analysis
-CSV Export — Download tracker data as a spreadsheet
-##Tech Stack
-Layer	Tool
-Frontend	React + TypeScript + Tailwind CSS + shadcn/ui
-Charts	Recharts
-Routing	React Router
-Data fetching	TanStack React Query
-Backend logic	Lovable Cloud Edge Functions (the scan-website function)
-AI integration	Lovable AI Gateway (no API key needed)
-Database	Lovable Cloud Database (stores scan history)
-Security	Row-Level Security policies on the scans table
+# Privacy Shield Scan (SmartConsent)
 
-# Welcome to your Lovable project
+A modern web privacy scanner and consent analytics dashboard.
 
-## Project info
+**Privacy Shield Scan (SmartConsent)** lets you scan any public website for cookies, trackers, and consent practices, then visualizes the risk profile and privacy grade in a clean, dashboard-style UI. It’s built for researchers, compliance teams, and developers who want quick insight into how websites handle tracking and consent.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+---
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- **Website Privacy Scanner**
+  - Scan any URL using a Supabase Edge Function (`scan-website`)
+  - Detect cookies and third‑party trackers
+  - Compute an overall **risk level** (Low → Critical)
 
-**Use Lovable**
+- **Privacy Grade**
+  - Assigns a letter grade (A+ → F) with an underlying score out of 100
+  - Shows an explanation and suggested actions to improve privacy
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- **Tracker Analytics**
+  - Categorizes trackers (e.g. Essential, Analytics, Marketing, Third‑Party)
+  - Visualizes tracker categories and counts per scan
+  - Detailed tracker table with drill‑down panel
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Scan History & Dashboard**
+  - Stores scans in a Supabase `scans` table
+  - Overview dashboard with:
+    - Total scans
+    - Total trackers
+    - Average trackers per scan
+    - Distribution of risk levels
+    - Average privacy grade across all scans
 
-**Use your preferred IDE**
+- **Consent Awareness**
+  - Tracks user consent preferences in local storage
+  - Surfaces consent labels (Essential, Analytics, Marketing, Third‑Party)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- **Modern UI**
+  - Built with React, TypeScript, Tailwind CSS, and shadcn‑ui
+  - Responsive layout and polished dashboard components
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+---
 
-Follow these steps:
+## Tech Stack
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, shadcn‑ui, Radix UI
+- **Charts**: Recharts
+- **Routing**: React Router
+- **Forms & Validation**: React Hook Form, Zod
+- **Backend**: Supabase (Postgres + Edge Functions)
+- **Testing & Tooling**: ESLint, Vitest, Testing Library
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+---
 
-# Step 3: Install the necessary dependencies.
-npm i
+## System Architecture
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+At a high level, SmartConsent is a privacy scanning pipeline that connects a **React/Vite frontend**, a **Node.js edge backend**, and several external intelligence services (Firecrawl, DuckDuckGo Tracker Radar, Gemini LLM, Supabase).
+
+```mermaid
+flowchart LR
+    user[End User / Privacy Officer]
+    frontend[React/Vite Frontend<br/>SmartConsent UI]
+    backend[Node.js Edge Backend<br/>Scan & Orchestration]
+    firecrawl[Firecrawl API<br/>DOM, Scripts, Cookies]
+    radar[DuckDuckGo Tracker Radar<br/>Tracker Intelligence]
+    gemini[Gemini LLM<br/>Policy Analysis]
+    supabase[(Supabase Database<br/>Scan History)]
+
+    user -->|enters URL / views reports| frontend
+    frontend -->|/api/scan (URL)| backend
+
+    backend -->|fetch DOM, scripts, cookies| firecrawl
+    firecrawl --> backend
+
+    backend -->|cross‑reference domains| radar
+    radar --> backend
+
+    backend -->|analyze privacy policy text| gemini
+    gemini --> backend
+
+    backend -->|persist scan results| supabase
+    supabase -->|load dashboard & history| backend
+
+    backend -->|risk score, trackers, grade| frontend
+```
+
+**End‑to‑end flow (based on the diagrams above):**
+
+1. The **user** inputs a website URL or uses the safe sandbox to browse.
+2. The **React/Vite frontend** sends the URL to the **Node.js edge backend** (`/api/scan` or Supabase function).
+3. The backend uses **Firecrawl** to fetch DOM, scripts, and cookies, then extracts domains.
+4. Extracted domains are checked against **DuckDuckGo Tracker Radar** to classify trackers and assign heuristic risk scores.
+5. The backend scrapes the site’s privacy policy (if present) and sends the text to **Gemini LLM** to evaluate legal compliance and missing clauses.
+6. The backend combines tracker heuristics + policy analysis into a **final risk score and privacy grade**, saves everything to **Supabase**, and returns a structured response to the frontend.
+7. The frontend renders **real‑time scan results**, **historical dashboard analytics**, and **detailed tracker/policy views** for the user.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js ≥ 18
+- npm (comes with Node)
+- A Supabase project (for database and the `scan-website` function)
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/switch41/privacy-shield-scan.git
+cd privacy-shield-scan
+```
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+### 3. Environment variables
+
+Create a `.env` (or `.env.local`) file in the project root and add:
+
+```bash
+VITE_SUPABASE_URL=your-supabase-url
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+Adjust/add any other environment variables you use for Supabase functions or external services.
+
+---
+
+## Supabase Setup (High Level)
+
+1. **Create a Supabase project**.
+2. **Create a `scans` table** (example):
+
+   ```sql
+   create table if not exists public.scans (
+     id uuid primary key default gen_random_uuid(),
+     url text not null,
+     overall_risk text not null,
+     risk_explanation text,
+     suggested_action text,
+     trackers jsonb,
+     policy_analysis jsonb,
+     tracker_count int,
+     privacy_grade jsonb,
+     created_at timestamptz default now()
+   );
+   ```
+
+3. **Deploy an Edge Function named `scan-website`** that:
+   - Accepts `{ url }` in the request body
+   - Scans the website for cookies/trackers
+   - Analyzes the privacy policy
+   - Returns a JSON payload with:
+     - `url`, `timestamp`
+     - `overallRisk`, `riskExplanation`, `suggestedAction`
+     - `trackers`
+     - `policyAnalysis`
+     - `privacyGrade`
+
+4. Make sure CORS and function settings allow your frontend origin.
+
+---
+
+## Running the App
+
+### Development
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Open `http://localhost:5173` in your browser.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Production Build
 
-**Use GitHub Codespaces**
+```bash
+npm run build
+npm run preview
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- `npm run build` creates an optimized production bundle.
+- `npm run preview` serves the built app locally.
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+## Project Structure (Simplified)
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- `src/pages/Index.tsx` – main scanner page (URL input, scan results)
+- `src/pages/Overview.tsx` – dashboard with aggregated stats and privacy grades
+- `src/pages/Sandbox.tsx` – sandbox / experimentation area
+- `src/components/*` – UI components (forms, tables, charts, cards, dialogs)
+- `src/integrations/supabase/*` – Supabase client and helpers
+- `src/lib/types.ts` – shared TypeScript types (e.g. `ScanResult`, `TrackerInfo`)
+- `public/` – static assets
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Scripts
 
-## Can I connect a custom domain to my Lovable project?
+From `package.json`:
 
-Yes, you can!
+- `npm run dev` – start the dev server
+- `npm run build` – production build
+- `npm run build:dev` – development-mode build
+- `npm run preview` – preview the production build
+- `npm run lint` – run ESLint
+- `npm run test` – run tests once
+- `npm run test:watch` – run tests in watch mode
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## License
+
+This project is intended for academic and research purposes.  
+Add your chosen license text here (e.g. MIT, Apache‑2.0, or custom).
