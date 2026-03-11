@@ -217,4 +217,4 @@ From `package.json`:
 ## License
 
 This project is intended for academic and research purposes.  
-Add your chosen license text here (e.g. MIT, Apache‑2.0, or custom).
+
